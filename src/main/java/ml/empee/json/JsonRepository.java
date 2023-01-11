@@ -11,7 +11,7 @@ import java.util.stream.Stream;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
-public class JsonRepository<Type> {
+public class JsonRepository<Type extends Cloneable> {
   private final JavaPlugin plugin = JavaPlugin.getProvidingPlugin(getClass());
   private final List<Type> data = new ArrayList<>();
   private final JsonPersistence persistence;
@@ -27,16 +27,12 @@ public class JsonRepository<Type> {
     }
   }
 
-  protected void save() {
+  public void saveDB() {
     Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> persistence.serialize(data, dataFile));
   }
 
   public List<Type> findAll() {
     return Collections.unmodifiableList(data);
-  }
-
-  public void update(Type type) {
-    save();
   }
 
   public void forEach(Consumer<Type> consumer) {
@@ -45,27 +41,27 @@ public class JsonRepository<Type> {
 
   public void save(Type type) {
     data.add(type);
-    save();
+    saveDB();
   }
 
   public void saveAll(List<Type> types) {
     data.addAll(types);
-    save();
+    saveDB();
   }
 
   public void remove(Type type) {
     data.remove(type);
-    save();
+    saveDB();
   }
 
   public void removeAll(List<Type> types) {
     data.removeAll(types);
-    save();
+    saveDB();
   }
 
   public void clear() {
     data.clear();
-    save();
+    saveDB();
   }
 
   public boolean contains(Type type) {
@@ -82,7 +78,7 @@ public class JsonRepository<Type> {
 
   public void removeIf(Predicate<Type> filter) {
     data.removeIf(filter);
-    save();
+    saveDB();
   }
 
   public Stream<Type> stream() {
