@@ -19,7 +19,6 @@ public class JsonPersistence {
   public JsonPersistence(Object... adapters) {
     GsonBuilder builder = new GsonBuilder()
         .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
-        .excludeFieldsWithoutExposeAnnotation()
         .registerTypeAdapter(Location.class, new LocationAdapter())
         .setPrettyPrinting()
         .disableHtmlEscaping();
