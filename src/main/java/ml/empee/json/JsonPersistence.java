@@ -9,9 +9,13 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import ml.empee.json.adapters.LocationAdapter;
 import ml.empee.json.validator.Validation;
 import org.bukkit.Location;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class JsonPersistence {
@@ -30,7 +34,7 @@ public class JsonPersistence {
     this.gson = builder.create();
   }
 
-  public synchronized void serialize(Object object, File target) {
+  public synchronized void serialize(File target, Object object) {
     target.getParentFile().mkdirs();
     try (BufferedWriter w = Files.newBufferedWriter(target.toPath())) {
       w.append(gson.toJson(object));
@@ -52,6 +56,16 @@ public class JsonPersistence {
     } catch (IOException e) {
       throw new JsonParseException("Error while deserializing the source " + source.toPath(), e);
     }
+  }
+
+  @NotNull
+  public <T> List<T> deserializeList(File source, Class<T[]> clazz) {
+    T[] result = deserialize(source, clazz);
+    if(result == null) {
+      return new ArrayList<>();
+    }
+
+    return Arrays.asList(result);
   }
 
 }
