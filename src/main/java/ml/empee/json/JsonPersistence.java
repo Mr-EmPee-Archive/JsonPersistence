@@ -12,6 +12,8 @@ import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import ml.empee.json.adapters.LocationAdapter;
 import ml.empee.json.validator.Validation;
 import org.bukkit.Location;
@@ -20,7 +22,12 @@ import org.jetbrains.annotations.Nullable;
 
 public class JsonPersistence {
   private final Gson gson;
-  public JsonPersistence(Object... adapters) {
+  private final File file;
+  private final Lock writeLock = new ReentrantLock();
+
+  public JsonPersistence(File file, Object... adapters) {
+    this.file = file;
+
     GsonBuilder builder = new GsonBuilder()
         .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
         .registerTypeAdapter(Location.class, new LocationAdapter())
@@ -34,33 +41,50 @@ public class JsonPersistence {
     this.gson = builder.create();
   }
 
-  public synchronized void serialize(File target, Object object) {
-    target.getParentFile().mkdirs();
-    try (BufferedWriter w = Files.newBufferedWriter(target.toPath())) {
+  /**
+   * Thread-safe
+   */
+  public void serialize(Object object) {
+    writeLock.lock();
+
+    file.getParentFile().mkdirs();
+    try (BufferedWriter w = Files.newBufferedWriter(file.toPath())) {
       w.append(gson.toJson(object));
     } catch (IOException e) {
-      throw new JsonParseException("Error while serializing " + target, e);
+      throw new JsonParseException("Error while serializing " + file.getName(), e);
+    } finally {
+      writeLock.unlock();
     }
   }
 
+
+  /**
+   * Thread-safe
+   */
   @Nullable
-  public <T> T deserialize(File source, Class<T> clazz) {
+  public <T> T deserialize(Class<T> clazz) {
+    writeLock.lock();
+    writeLock.unlock();
+
     try {
-      T object = gson.fromJson(Files.newBufferedReader(source.toPath()), clazz);
+      T object = gson.fromJson(Files.newBufferedReader(file.toPath()), clazz);
       Validation.validate(object);
       return object;
     } catch (NoSuchFileException e) {
       return null;
     } catch (JsonParseException e) {
-      throw new JsonParseException("Misconfiguration of the file " + source, e);
+      throw new JsonParseException("Misconfiguration of the file " + file, e);
     } catch (IOException e) {
-      throw new JsonParseException("Error while deserializing the source " + source.toPath(), e);
+      throw new JsonParseException("Error while deserializing the source " + file.toPath(), e);
     }
   }
 
+  /**
+   * Thread-safe
+   */
   @NotNull
-  public <T> List<T> deserializeList(File source, Class<T[]> clazz) {
-    T[] result = deserialize(source, clazz);
+  public <T> List<T> deserializeList(Class<T[]> clazz) {
+    T[] result = deserialize(clazz);
     if(result == null) {
       return new ArrayList<>();
     }
